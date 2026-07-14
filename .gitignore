@@ -1,0 +1,44 @@
+# ---- Python (api1) ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Go (api2) ----
+api2/api2
+api2/api2.exe
+*.test
+*.out
+
+# ---- k6 results (再生成可能なベンチ結果。残したい場合はこの行をコメント化) ----
+k6/results/
+
+# ---- Docker ----
+# コンテナのボリュームデータ等がホストに落ちた場合
+.docker/
+
+# ---- 環境変数 / シークレット ----
+.env
+.env.*
+!.env.example
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- IDE / エディタ ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- ログ ----
+*.log

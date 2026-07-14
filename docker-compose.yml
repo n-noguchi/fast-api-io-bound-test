@@ -1,0 +1,40 @@
+services:
+  api2:
+    build: ./api2
+    image: iob-api2
+    container_name: iob-api2
+    command: ["-sleep=500ms"]
+    ports:
+      - "18080:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+
+  api1:
+    build: ./api1
+    image: iob-api1
+    container_name: iob-api1
+    environment:
+      - API2_BASE_URL=http://api2:8080
+      - UVICORN_WORKERS=${UVICORN_WORKERS:-1}
+    ports:
+      - "18000:8000"
+    depends_on:
+      - api2
+
+  k6:
+    image: grafana/k6:0.54.0
+    container_name: iob-k6
+    volumes:
+      - ./k6:/scripts
+    entrypoint: ["k6"]
+    networks:
+      - default
+    depends_on:
+      - api1
+    profiles: ["test"]
+
+networks:
+  default:
+    name: iob-net

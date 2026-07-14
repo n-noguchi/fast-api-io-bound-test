@@ -1,0 +1,6 @@
+# 環境別の不要ファイル除外
+**/__pycache__/
+**/*.pyc
+.git
+.gitignore
+.DS_Store
