@@ -58,3 +58,54 @@ scripts/ git bash 用    run / bench / bench-workers / summarize / down
 ## 結果
 
 チューニングの探索結果と考察は **[RESULTS.md](./RESULTS.md)** を参照。
+
+---
+
+# 追加検証: DataFusion + MinIO (api1b)
+
+FastAPI + Apache DataFusion で MinIO 上の parquet(≈1GB) をクエリする構成。
+既存の httpx 検証とは **別 compose**(`docker-compose.datafusion.yml`, project=`iob-df`)で分離済み。
+
+## 構成
+
+```
+api1b/   FastAPI + datafusion  MinIO の parquet を SQL クエリ (app_datafusion.py)
+datagen/ Spark 3.5.3           1GB parquet を生成して MinIO へ (generate_parquet.py)
+k6/      k6 テスト              test_datafusion.js
+```
+
+## 使い方（git bash）
+
+```bash
+# 1) MinIO + API1b 起動 & ヘルスチェック
+./scripts/run_df.sh
+
+# 2) データ生成(1億行 ≈1GB)。行数は NUM_ROWS で調整可
+./scripts/gen_data.sh
+#   NUM_ROWS=10000000 ./scripts/gen_data.sh        # サイズ調整用
+
+# 3) チューニング探索ベンチ (target_partitions / metadata_cache / pushdown)
+./scripts/bench_df.sh
+#   VUS=20 DURATION=20s ./scripts/bench_df.sh
+#   DF_TARGET_PARTITIONS_LIST='1 4 8' DF_NO_MC=1 DF_PUSHDOWN=0 ./scripts/bench_df.sh
+
+# 4) 結果集計 (python 使用 / jq 不要)
+./scripts/summarize.sh          # 最新スタンプ
+./scripts/summarize.sh 20260715-030538   # 指定スタンプ
+
+# 5) 停止
+./scripts/down_df.sh
+```
+
+## ポート
+
+| サービス | ホストポート | パス |
+|---|---|---|
+| api1b (DataFusion) | 18001 | `/health`, `/query`, `/scan` |
+| minio API | 19000 | S3 互換 |
+| minio console | 19001 | (minioadmin / minioadmin) |
+
+## 結果
+
+DataFusion のチューニング探索結果は **[RESULTS_DATAFUSION.md](./RESULTS_DATAFUSION.md)** を参照。
+
