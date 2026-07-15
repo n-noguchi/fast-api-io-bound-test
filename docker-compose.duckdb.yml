@@ -1,0 +1,33 @@
+services:
+  # api1c joins the prior DataFusion stack's network and reads its existing
+  # s3://data/events.parquet through the running MinIO service.
+  api1c:
+    build: ./api1c
+    image: iob-api1c
+    container_name: iob-api1c
+    environment:
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: data
+      PARQUET_KEY: events.parquet
+      DUCKDB_CONNECTIONS: "${DUCKDB_CONNECTIONS:-1}"
+      DUCKDB_THREADS: "${DUCKDB_THREADS:-2}"
+      DUCKDB_OBJECT_CACHE: "${DUCKDB_OBJECT_CACHE:-1}"
+    ports:
+      - "18002:8000"
+
+  k6duck:
+    image: grafana/k6:0.54.0
+    container_name: iob-k6duck
+    volumes:
+      - ./k6:/scripts
+    entrypoint: ["k6"]
+    depends_on:
+      - api1c
+    profiles: ["test"]
+
+networks:
+  default:
+    name: iob-df-net
+    external: true

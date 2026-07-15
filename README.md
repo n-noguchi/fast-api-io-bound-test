@@ -108,4 +108,42 @@ k6/      k6 テスト              test_datafusion.js
 ## 結果
 
 DataFusion のチューニング探索結果は **[RESULTS_DATAFUSION.md](./RESULTS_DATAFUSION.md)** を参照。
+# 追加検証: DuckDB + MinIO (api1c)
 
+`api1c/app_duckdb.py` は、前回の DataFusion 検証で MinIO に置いた
+`s3://data/events.parquet` を DuckDB の `httpfs` 経由で直接クエリします。
+データを複製しないため、まず前回と同じ `./scripts/gen_data.sh` で parquet を
+作成してください。DuckDB 用 Compose は DataFusion の `iob-df-net` に参加し、
+稼働中の MinIO を再利用します。
+
+```bash
+# 前回 parquet がまだ無い場合のみ実行
+./scripts/run_df.sh
+./scripts/gen_data.sh
+
+# DuckDB API を起動（MinIO と events.parquet の存在も確認する）
+./scripts/run_duckdb.sh
+
+# k6 で同等クエリを比較する
+./scripts/bench_duckdb.sh
+#   VUS=40 DURATION=30s ./scripts/bench_duckdb.sh
+#   DUCKDB_CONNECTIONS_LIST='1 2 4' DUCKDB_THREADS_LIST='1 2 4' ./scripts/bench_duckdb.sh
+
+# 結果を集計 / DuckDB API のみ停止
+./scripts/summarize.sh
+./scripts/down_duckdb.sh
+```
+
+`/query` は api1b と同じ `tenantid + date` の絞り込み、`dimension1` の集計と
+ソートを行います。`/scan` も同じ比較用のフルスキャンです。k6 では次の軸を
+順に比較し、CPU の過剰並列化を避けつつ最速の組合せを見つけます。
+
+- `DUCKDB_CONNECTIONS`: 同時リクエスト数（DuckDB カーソルプール数）
+- `DUCKDB_THREADS`: 1 クエリ当たりの DuckDB 実行スレッド数
+- `DUCKDB_OBJECT_CACHE`: MinIO/Parquet メタデータキャッシュの有無
+
+| サービス | ホストポート | パス |
+|---|---:|---|
+| api1c (DuckDB) | 18002 | `/health`, `/query`, `/scan` |
+
+検証結果は **[RESULTS_DUCKDB.md](./RESULTS_DUCKDB.md)** を参照。
